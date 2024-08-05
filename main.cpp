@@ -1,20 +1,20 @@
 #include <array>
 #include <iostream>
 #include <string>
-#include "include/raylib.h"
-#define k_gravity 1  // 1 pixel per frame
-using namespace std;
 
+#include "include/raylib.h"
+using namespace std;
+// acceleration due to gravity (pixels/s^2)
+const int nGravity{2'000};
 const int nWindowWidth{1024};
 const int nWindowHeight{512};
 
 // player dimensions
 
-class GameObj {
+class GameCharacter {
  public:
   // Object box
-  int nHeight;
-  int nWidth;
+  Rectangle oBox;
   Color oColor;
   // Object sprite
   Rectangle oSpriteRect;
@@ -22,50 +22,45 @@ class GameObj {
   Vector2 vSpritePos;
   // Object speed
   int nVelocity{0};
-  int nY;
-  int nX;
-  int nJumpVelocity{-10};
+  int nJumpVelocity{-600};
 
-  GameObj(int width, int height, Color color, int x, const char* TexturePath) {
+  GameCharacter(int width, int height, int x, const char* texturePath) {
     // Initialise box
-    nWidth = width;
-    nHeight = height;
-    oColor = color;
-    nX = x;
-    nY = nWindowHeight - nHeight;
+    oColor = RED;  // box color for debug
+    oBox = (Rectangle){x, nWindowHeight - height, width, height};
     // Initialise texture
-    oSpriteTexture = LoadTexture(TexturePath);
-    oSpriteRect.width = oSpriteTexture.width / 3;
-    oSpriteRect.height = oSpriteTexture.height / 3;
-    oSpriteRect.x = 0;
-    oSpriteRect.y = 0;
-    vSpritePos.x = nWindowWidth/2-oSpriteRect.width/2;
-    vSpritePos.y = nWindowHeight-oSpriteRect.height;
+    oSpriteTexture = LoadTexture(texturePath);
+    oSpriteRect =
+        (Rectangle){0, 0, oSpriteTexture.width / 3, oSpriteTexture.height / 3};
+    vSpritePos = (Vector2){oBox.x, oBox.y};
   }
 
-  ~GameObj() { UnloadTexture(oSpriteTexture); }
+  ~GameCharacter() { UnloadTexture(oSpriteTexture); }
 
   void Draw() {
-    DrawRectangle(nX, nY, nWidth, nHeight, oColor);
-    DrawTextureRec(oSpriteTexture, oSpriteRect, vSpritePos, WHITE);
+    DrawRectangle(oBox.x, oBox.y, oBox.width, oBox.height, oColor);
+    DrawTexturePro(oSpriteTexture, oSpriteRect, oBox, (Vector2){0, 0}, 0.0f,
+                   WHITE);
   }
 
-  void ApplyGravity() {
-    if (nY >= nWindowHeight - nHeight) {
+  void ApplyGravity(float fDeltaTime) {
+    if (oBox.y >= nWindowHeight - oBox.height) {
       // Rectangle is on ground
       nVelocity = 0;
     } else {
       // Rectangle is in the air
-      nVelocity += k_gravity;
+      nVelocity += nGravity * fDeltaTime;
     }
-    nY += nVelocity;
+    oBox.y += nVelocity * fDeltaTime;
+    vSpritePos.y = oBox.y;
   }
 
-  void Jump() {
-    if (nY >= nWindowHeight - nHeight) {
+  void Jump(float fDeltaTime) {
+    if (oBox.y >= nWindowHeight - oBox.height) {
       // object on the ground
       nVelocity += nJumpVelocity;
-      nY += nVelocity;
+      oBox.y += nVelocity * fDeltaTime;
+      vSpritePos.y = oBox.y;
     }
   }
 };
@@ -73,25 +68,20 @@ class GameObj {
 int main() {
   InitWindow(nWindowWidth, nWindowHeight, "Dasher Game");
   SetTargetFPS(60);
-  GameObj oPlayer(10, 20, RED, nWindowWidth / 2, "assets/gnome.png");
+  GameCharacter oPlayer(72, 96, nWindowWidth / 2, "assets/gnome.png");
 
   // Game Loop
   while (!WindowShouldClose()) {
+    const float fDeltaTime{GetFrameTime()};
     BeginDrawing();
     ClearBackground(WHITE);
-
     if (IsKeyPressed(KEY_SPACE)) {
-      oPlayer.Jump();
+      oPlayer.Jump(fDeltaTime);
     }
-
-    oPlayer.ApplyGravity();
-
+    oPlayer.ApplyGravity(fDeltaTime);
     oPlayer.Draw();
-
     EndDrawing();
   }
 
   return 0;
 }
-
-
